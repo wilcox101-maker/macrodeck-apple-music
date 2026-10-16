@@ -10,13 +10,10 @@ standard `MusicPlayerActions`) plus now-playing variables. It is Windows only: t
 logic, so tests run anywhere). Only `win-x64` is declared.
 
 Worked examples of every capability live in the
-[sample plugins repository](https://github.com/Macro-Deck-App/Macro-Deck-Sample-Plugins), not here.
-Read from there rather than growing this template.
+[sample plugins repository](https://github.com/Macro-Deck-App/Macro-Deck-Sample-Plugins).
 
 [README.md](README.md) is the human-facing guide: how to build, how to run against a real host, how to
-pack. This file is the rule set for writing the plugin. Read it before changing code. The template
-package itself is covered by
-[packaging/README.md](https://github.com/Macro-Deck-App/Macro-Deck-Plugin-Template/blob/main/packaging/README.md).
+pack. This file is the rule set for writing the plugin. Read it before changing code.
 
 ## Orientation
 
