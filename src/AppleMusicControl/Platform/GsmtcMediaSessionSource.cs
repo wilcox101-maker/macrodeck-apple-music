@@ -159,7 +159,7 @@ internal sealed class GsmtcMediaSessionSource : IMediaSessionSource, IDisposable
 
 			return _manager;
 		}
-		catch (Exception ex) when (ex is COMException or TypeLoadException or PlatformNotSupportedException)
+		catch (Exception ex) when (ex is not OperationCanceledException and not MediaControlUnavailableException)
 		{
 			throw new MediaControlUnavailableException("The Windows media session manager is unavailable.", ex);
 		}
