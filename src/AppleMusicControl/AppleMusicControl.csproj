@@ -2,6 +2,11 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
+        <!-- The shipped plugin is the Windows target; the plain target exists so the platform-neutral
+             logic builds and tests on any OS. Windows-only code sits behind #if WINDOWS. -->
+        <TargetFramework />
+        <TargetFrameworks>net10.0-windows10.0.19041.0;net10.0</TargetFrameworks>
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
         <!-- Pinned rather than taken from the project file name: manifest.json declares this executable
              name, and the generated Strings class lives in this namespace, so renaming the .csproj later
              must neither rename the built executable nor move Strings out from under the code. -->
@@ -10,6 +15,10 @@
         <IsPackable>false</IsPackable>
         <UserSecretsId>AppleMusicControl-PluginDevelopment</UserSecretsId>
     </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="AppleMusicControl.Tests" />
+    </ItemGroup>
 
     <!-- Microsoft.NET.Sdk plus this framework reference, not Microsoft.NET.Sdk.Web: a plugin is a
          headless process, and the framework reference is what supplies the hosting surface
