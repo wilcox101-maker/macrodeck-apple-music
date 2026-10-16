@@ -94,16 +94,28 @@ internal sealed class AppleMusicPlayer : IMusicPlayer
 		try
 		{
 			var session = await _source.GetAppleMusicSessionAsync(cancellationToken).ConfigureAwait(false);
-			if (_failures.RecordSuccess() is { } ended)
+			FailureEpisodeEnd? ended;
+			lock (_failures)
+			{
+				ended = _failures.RecordSuccess();
+			}
+
+			if (ended is not null)
 			{
 				_logger.Information("Media controls available again after {Duration} and {Failures} failures", ended.Duration, ended.Failures);
 			}
 
 			return PlaybackStateMapper.Map(session, volume, now);
 		}
-		catch (MediaControlUnavailableException ex)
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			var signal = _failures.RecordFailure(ex.Message);
+			// The widget treats a thrown state read as an error, so any OS failure degrades to unavailable.
+			FailureEpisodeSignal signal;
+			lock (_failures)
+			{
+				signal = _failures.RecordFailure(ex.Message);
+			}
+
 			switch (signal.Kind)
 			{
 				case FailureEpisodeSignalKind.Onset:

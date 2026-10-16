@@ -30,8 +30,8 @@ Audio API. Apple Music's own in-app volume slider has no Windows API, so it is n
 ### Music Player widget
 
 Add a **Music Player** widget to a page and pick **Apple Music** as the player. It shows title, artist,
-album art, progress and the playback state, and works well on a phone-sized grid. Tapping its controls
-uses the actions below.
+album art, progress and the playback state. For a phone, a page with the widget on top and a row of
+Previous, Toggle Play/Pause and Next buttons below it keeps every control large enough to tap.
 
 ### Actions
 

@@ -10,6 +10,8 @@ internal sealed class FakeMediaSessionSource : IMediaSessionSource
 
 	public bool Unavailable { get; set; }
 
+	public Exception? Failure { get; set; }
+
 	public bool CommandResult { get; set; } = true;
 
 	public int Reads { get; private set; }
@@ -22,6 +24,11 @@ internal sealed class FakeMediaSessionSource : IMediaSessionSource
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		Reads++;
+		if (Failure is not null)
+		{
+			throw Failure;
+		}
+
 		return Unavailable ? throw new MediaControlUnavailableException("test outage") : Task.FromResult(Session);
 	}
 

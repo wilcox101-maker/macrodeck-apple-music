@@ -56,6 +56,16 @@ public sealed class AppleMusicPlayerTests
 	}
 
 	[Test]
+	public async Task Unexpected_os_error_reads_as_unavailable()
+	{
+		_source.Failure = new InvalidCastException("broken session");
+
+		var state = await _player.GetStateAsync();
+
+		Assert.That(state.IsUnavailable, Is.True);
+	}
+
+	[Test]
 	public async Task Next_sends_the_command()
 	{
 		await _player.NextAsync();
