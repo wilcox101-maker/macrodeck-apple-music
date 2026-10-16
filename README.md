@@ -101,7 +101,7 @@ The CLI version must equal the SDK version pinned in `Directory.Packages.props`:
 ```bash
 dotnet tool install --global MacroDeck.Plugin.Cli --version 3.0.0-beta.17
 macrodeck-plugin build --source src/AppleMusicControl --output ./artifacts
-macrodeck-plugin validate --level publication --artifact ./artifacts/com.wilcox101-maker.apple-music-1.0.0.macroDeckPlugin
+macrodeck-plugin validate --level publication --artifact ./artifacts/com.wilcox101-maker.apple-music-1.0.2.macroDeckPlugin
 macrodeck-plugin test --executable "$PWD/src/AppleMusicControl/bin/Release/net10.0-windows10.0.19041.0/AppleMusicControl.dll"
 ```
 
@@ -113,7 +113,7 @@ Windows build with `--executable` (an absolute path).
 With Macro Deck running on the same PC:
 
 ```powershell
-macrodeck-plugin run --artifact .\artifacts\com.wilcox101-maker.apple-music-1.0.0.macroDeckPlugin
+macrodeck-plugin run --artifact .\artifacts\com.wilcox101-maker.apple-music-1.0.2.macroDeckPlugin
 ```
 
 Approve the pairing prompt in Macro Deck. Alternatively install the `.macroDeckPlugin` file from a local

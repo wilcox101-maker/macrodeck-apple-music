@@ -3,7 +3,7 @@
   "manifestVersion": 1,
   "id": "com.wilcox101-maker.apple-music",
   "name": "Apple Music Control",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Control the Apple Music app on Windows: transport, shuffle, repeat, system volume, now-playing variables and the Music Player widget.",
   "icon": "Assets/icon.svg",
   "entrypoints": {

@@ -9,7 +9,13 @@ internal static class NowPlayingVariables
 	{
 		if (localId == "volume")
 		{
-			return state.VolumePercent is { } volume ? VariableReading.Of(volume, 0, 100, 1) : VariableReading.Unavailable;
+			// Writable variables always report a value so a bound slider has something to start from.
+			return VariableReading.Of(state.VolumePercent ?? 0, 0, 100, 1);
+		}
+
+		if (localId == "position")
+		{
+			return VariableReading.Of(state.IsConnected && state.Position is { } p ? Math.Floor(p.TotalSeconds) : 0d);
 		}
 
 		if (localId == "connected")
@@ -33,7 +39,6 @@ internal static class NowPlayingVariables
 			"artist" => Text(state.Artists.Count > 0 ? string.Join(", ", state.Artists) : null),
 			"album" => Text(state.AlbumName),
 			"is-playing" => VariableReading.Of(state.PlaybackState == PlaybackState.Playing),
-			"position" => state.Position is { } p ? VariableReading.Of(Math.Floor(p.TotalSeconds)) : VariableReading.Unavailable,
 			"duration" => state.Duration is { } d ? VariableReading.Of(Math.Floor(d.TotalSeconds)) : VariableReading.Unavailable,
 			"shuffle" => VariableReading.Of(state.ShuffleEnabled),
 			"repeat" => VariableReading.Of(RepeatToken(state.RepeatMode)),

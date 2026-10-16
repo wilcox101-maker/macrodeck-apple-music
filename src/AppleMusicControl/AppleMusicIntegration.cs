@@ -114,11 +114,29 @@ internal sealed class AppleMusicIntegration : IPluginIntegration, IMusicPlayerPr
 		return NowPlayingVariables.Read(localId, state);
 	}
 
-	public ValueTask<VariableWriteResult> SetValueAsync(string localId, object? value, CancellationToken cancellationToken = default)
-		=> localId switch
+	public async ValueTask<VariableWriteResult> SetValueAsync(string localId, object? value, CancellationToken cancellationToken = default)
+	{
+		if (localId is not ("volume" or "position"))
 		{
-			"volume" => MusicPlayerVariableWrites.SetVolumeAsync(_player, value, cancellationToken),
-			"position" => MusicPlayerVariableWrites.SeekAsync(_player, value, cancellationToken),
-			_ => ValueTask.FromResult(VariableWriteResult.NotWritable())
-		};
+			return VariableWriteResult.NotWritable();
+		}
+
+		if (!MusicPlayerVariableWrites.TryReadNumber(value, out _))
+		{
+			return VariableWriteResult.InvalidValue();
+		}
+
+		// Without an audio endpoint or session the write cannot land; report that instead of failing.
+		var state = await _player.GetStateAsync(cancellationToken).ConfigureAwait(false);
+		if (localId == "volume")
+		{
+			return state.VolumePercent is null
+				? VariableWriteResult.Unavailable()
+				: await MusicPlayerVariableWrites.SetVolumeAsync(_player, value, cancellationToken).ConfigureAwait(false);
+		}
+
+		return state.IsConnected
+			? await MusicPlayerVariableWrites.SeekAsync(_player, value, cancellationToken).ConfigureAwait(false)
+			: VariableWriteResult.Unavailable();
+	}
 }

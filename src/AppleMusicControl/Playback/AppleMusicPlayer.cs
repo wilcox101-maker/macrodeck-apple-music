@@ -90,7 +90,7 @@ internal sealed class AppleMusicPlayer : IMusicPlayer
 
 	private async Task<MusicPlayerState> ReadStateAsync(DateTimeOffset now, CancellationToken cancellationToken)
 	{
-		var volume = _volume.TryGetPercent();
+		var volume = TryReadVolume();
 		try
 		{
 			var session = await _source.GetAppleMusicSessionAsync(cancellationToken).ConfigureAwait(false);
@@ -131,6 +131,20 @@ internal sealed class AppleMusicPlayer : IMusicPlayer
 			}
 
 			return MusicPlayerState.Unavailable(PlaybackStateMapper.ControlsUnavailableMessage) with { VolumePercent = volume };
+		}
+	}
+
+	// COM activation throws outside Windows or without an audio service; a missing endpoint is not an error.
+	private int? TryReadVolume()
+	{
+		try
+		{
+			return _volume.TryGetPercent();
+		}
+		catch (Exception ex)
+		{
+			_logger.Debug("System volume unavailable: {Error}", ex.Message);
+			return null;
 		}
 	}
 

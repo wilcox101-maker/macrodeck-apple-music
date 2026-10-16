@@ -99,6 +99,25 @@ public sealed class PluginIntegrationTests
 	}
 
 	[Test]
+	public async Task Writes_without_session_or_endpoint_report_unavailable()
+	{
+		_source.Session = null;
+		_volume.Throws = true;
+		await using var harness = CreateHarness();
+		await harness.InitializeIntegrationsAsync();
+		var integration = harness.Services.GetRequiredService<AppleMusicIntegration>();
+
+		Assert.That((await integration.ReadAsync("volume")).Value, Is.EqualTo(0));
+		Assert.That((await integration.ReadAsync("position")).Value, Is.EqualTo(0d));
+
+		var volume = await integration.SetValueAsync("volume", 0d);
+		var position = await integration.SetValueAsync("position", 0d);
+
+		Assert.That(volume.Status, Is.EqualTo(MacroDeck.Sdk.Variables.VariableWriteStatus.Unavailable));
+		Assert.That(position.Status, Is.EqualTo(MacroDeck.Sdk.Variables.VariableWriteStatus.Unavailable));
+	}
+
+	[Test]
 	public async Task Music_player_state_reports_the_track()
 	{
 		await using var harness = CreateHarness();

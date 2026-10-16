@@ -54,7 +54,9 @@ internal sealed class FakeSystemVolume : ISystemVolume
 {
 	public int? Percent { get; set; } = 40;
 
-	public int? TryGetPercent() => Percent;
+	public bool Throws { get; set; }
+
+	public int? TryGetPercent() => Throws ? throw new PlatformNotSupportedException("test") : Percent;
 
 	public void SetPercent(int percent) => Percent = percent;
 }

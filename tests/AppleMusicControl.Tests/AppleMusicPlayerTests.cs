@@ -194,4 +194,13 @@ public sealed class NowPlayingVariablesTests
 		Assert.That(NowPlayingVariables.Read("connected", state).Value, Is.EqualTo(false));
 		Assert.That(NowPlayingVariables.Read("volume", state).Value, Is.EqualTo(40));
 	}
+
+	[Test]
+	public void Writable_variables_report_a_default_without_session_or_endpoint()
+	{
+		var state = PlaybackStateMapper.Map(null, null, Sessions.Reported);
+
+		Assert.That(NowPlayingVariables.Read("volume", state).Value, Is.EqualTo(0));
+		Assert.That(NowPlayingVariables.Read("position", state).Value, Is.EqualTo(0d));
+	}
 }
