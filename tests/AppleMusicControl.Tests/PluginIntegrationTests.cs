@@ -1,19 +1,34 @@
+using AppleMusicControl.Playback;
+using AppleMusicControl.Volume;
+using MacroDeck.Plugin.Protocol.Capabilities.Variables;
 using MacroDeck.Plugin.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 
 namespace AppleMusicControl.Tests;
 
-/// <summary>
-/// Behaviour tests through <see cref="PluginTestHarness"/>: the plugin's own capability handlers run,
-/// but nothing crosses a socket. This is where you test what your integration does.
-/// </summary>
+/// <summary>Runs the plugin's own capability handlers through the SDK harness with fake OS access.</summary>
 [TestFixture]
 public sealed class PluginIntegrationTests
 {
-	private static PluginTestHarness CreateHarness() =>
-		PluginTestHarness.Create(builder => builder
-			.UseLocalization(Strings.LocalizationCatalog)
-			.RegisterIntegration<PluginIntegration>());
+	private FakeMediaSessionSource _source = null!;
+	private FakeSystemVolume _volume = null!;
+
+	[SetUp]
+	public void SetUp()
+	{
+		_source = new FakeMediaSessionSource { Session = Sessions.Playing() };
+		_volume = new FakeSystemVolume();
+	}
+
+	private PluginTestHarness CreateHarness() =>
+		PluginTestHarness.Create(builder =>
+		{
+			builder.UseLocalization(Strings.LocalizationCatalog).RegisterIntegration<AppleMusicIntegration>();
+			builder.Services.AddSingleton<IMediaSessionSource>(_source);
+			builder.Services.AddSingleton<ISystemVolume>(_volume);
+			builder.Services.AddAppleMusic();
+		});
 
 	[Test]
 	public async Task The_plugin_builds_and_initializes()
@@ -24,37 +39,78 @@ public sealed class PluginIntegrationTests
 	}
 
 	[Test]
-	public async Task The_example_action_writes_the_message_to_the_log()
+	public async Task Next_action_reaches_apple_music()
 	{
 		await using var harness = CreateHarness();
 		await harness.InitializeIntegrationsAsync();
 
-		var outcome = await harness.Actions.ExecuteAsync(
-			"log-message",
-			new Dictionary<string, object?> { ["message"] = "Hello from a test" });
+		var outcome = await harness.Actions.ExecuteAsync("next");
 
 		Assert.That(outcome.Succeeded, Is.True);
-		Assert.That(harness.Logs.Events.Any(e => e.Message.Contains("Hello from a test")), Is.True);
+		Assert.That(string.Join(", ", _source.Commands), Is.EqualTo("Next"));
 	}
 
 	[Test]
-	public async Task The_example_action_fails_when_the_message_is_blank()
+	public async Task Next_action_fails_when_apple_music_is_not_running()
+	{
+		_source.Session = null;
+		await using var harness = CreateHarness();
+		await harness.InitializeIntegrationsAsync();
+
+		var outcome = await harness.Actions.ExecuteAsync("next");
+
+		Assert.That(outcome.Succeeded, Is.False);
+	}
+
+	[Test]
+	public async Task Set_volume_action_sets_the_system_volume()
 	{
 		await using var harness = CreateHarness();
 		await harness.InitializeIntegrationsAsync();
 
-		var outcome = await harness.Actions.ExecuteAsync(
-			"log-message",
-			new Dictionary<string, object?> { ["message"] = "   " });
+		var outcome = await harness.Actions.ExecuteAsync("set-volume", new Dictionary<string, object?> { ["volume"] = 70 });
 
-		Assert.That(outcome.Succeeded, Is.False);
+		Assert.That(outcome.Succeeded, Is.True);
+		Assert.That(_volume.Percent, Is.EqualTo(70));
+	}
+
+	[Test]
+	public async Task Track_variable_is_served()
+	{
+		await using var harness = CreateHarness();
+		await harness.InitializeIntegrationsAsync();
+
+		var outcome = await harness.Variables.GetAsync("track");
+
+		Assert.That(outcome.Succeeded, Is.True);
+		Assert.That(outcome.Data?.ToString(), Does.Contain("Song"));
+	}
+
+	[Test]
+	public async Task Writing_the_volume_variable_sets_the_system_volume()
+	{
+		await using var harness = CreateHarness();
+		await harness.InitializeIntegrationsAsync();
+
+		var outcome = await harness.Variables.SetAsync("volume", new VariableValueDto { Kind = "number", Number = 25 });
+
+		Assert.That(outcome.Succeeded, Is.True);
+		Assert.That(_volume.Percent, Is.EqualTo(25));
+	}
+
+	[Test]
+	public async Task Music_player_state_reports_the_track()
+	{
+		await using var harness = CreateHarness();
+		await harness.InitializeIntegrationsAsync();
+
+		var outcome = await harness.MusicPlayer.GetStateAsync(new { instanceId = AppleMusicIntegration.InstanceId });
+
+		Assert.That(outcome.Succeeded, Is.True);
+		Assert.That(outcome.Data?.ToString(), Does.Contain("Song"));
 	}
 }
 
-/// <summary>
-/// The localization set is generated from <c>Localization/*.resx</c>, so these guard the wiring rather
-/// than any wording: a missing catalog registration leaves every label showing its raw key.
-/// </summary>
 [TestFixture]
 public sealed class LocalizationTests
 {
@@ -62,19 +118,6 @@ public sealed class LocalizationTests
 	public void The_catalog_is_scoped_to_the_plugin_id()
 	{
 		Assert.That(Strings.LocalizationCatalog.Scope, Is.EqualTo("plugin:com.wilcox101-maker.apple-music"));
-	}
-
-	[Test]
-	public void English_is_the_default_culture()
-	{
-		Assert.That(Strings.LocalizationCatalog.DefaultCulture, Is.EqualTo("en"));
-		Assert.That(Strings.LocalizationCatalog.Cultures, Does.Contain("en"));
-	}
-
-	[Test]
-	public void The_action_strings_come_from_the_catalog()
-	{
-		Assert.That(Strings.LocalizationCatalog.KeysOf("en"), Does.Contain("Actions.LogMessage.Name"));
 	}
 
 	[Test]
