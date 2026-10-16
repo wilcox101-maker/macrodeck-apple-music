@@ -20,7 +20,14 @@
   },
   "license": "MIT",
   "repository": "https://github.com/wilcox101-maker/macrodeck-apple-music",
+  "homepage": "https://github.com/wilcox101-maker/macrodeck-apple-music",
   "compatibility": {
     "macroDeck": ">=3.0.0-0"
+  },
+  "permissions": [],
+  "ai": {
+    "interaction": false,
+    "generatedContent": false,
+    "generatedAssets": false
   }
 }
