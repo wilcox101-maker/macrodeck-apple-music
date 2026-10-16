@@ -3,12 +3,11 @@
 This file must be kept up to date. When a rule here stops matching reality, or a new rule emerges from
 work in this repository, update this file as part of that change rather than leaving it to drift.
 
-This repository is the **starting point for a Macro Deck 3 out-of-process plugin**, and it is
-simultaneously the content of the `dotnet new macrodeck-plugin` template package. The plugin under
-`src/AppleMusicControl/` is deliberately minimal: one integration and one example action,
-`LogMessageAction`, which exists solely to show the localized shape of an action end to end. It is
-meant to be replaced by the plugin's real first action, not grown into a second sample. Nothing else
-is demonstrated here.
+This repository is the **Apple Music Control** Macro Deck 3 out-of-process plugin, generated from the
+official plugin template. It exposes the Apple Music app for Windows as a music player (widget and the
+standard `MusicPlayerActions`) plus now-playing variables. It is Windows only: the project multi-targets
+`net10.0-windows10.0.19041.0` (shipped, `#if WINDOWS` adapters in `Platform/`) and `net10.0` (neutral
+logic, so tests run anywhere). Only `win-x64` is declared.
 
 Worked examples of every capability live in the
 [sample plugins repository](https://github.com/Macro-Deck-App/Macro-Deck-Sample-Plugins), not here.
@@ -26,25 +25,16 @@ src/AppleMusicControl/
   Program.cs             builder chain - a few lines and a RunAsync
   manifest.json          identity, icon, per-platform entrypoints
   macrodeck-build.json   one publish target per declared entrypoint
-  PluginIntegration.cs   the integration: lifecycle and capability opt-ins
-  LogMessageAction.cs    the example action, localized end to end
+  AppleMusicIntegration.cs   the integration: music player, actions, variables
+  Playback/              platform-neutral player, mapping, session selection, variables
+  Volume/                system volume abstraction
+  Platform/              Windows adapters (GSMTC media session, Core Audio volume)
   Localization/Strings.resx   default-culture strings; Strings.<tag>.resx per language
   Assets/icon.svg        the icon the manifest declares
   Properties/launchSettings.json   the single real-host debug profile
 tests/AppleMusicControl.Tests/
-  PluginIntegrationTests.cs   the plugin builds, the action runs, the catalog is wired
+  *Tests.cs              behaviour tests with fake OS access
 ```
-
-The template repository carries two more directories that a generated plugin does not:
-`.template.config/` (the `dotnet new` definition) and `packaging/` (the template package project, kept
-out of the solution on purpose).
-
-`.template.config/content/` holds the *only* deliberate copies in this repository: conditional variants
-of `manifest.json` and `macrodeck-build.json`. `dotnet new` selects platforms and omits unsupplied
-optional fields with `//#if` markers, which would make the checked-in files invalid JSON and break
-`macrodeck-plugin validate`, `build` and the manifest reader. So the files under `src/` stay valid and
-the templated variants replace them during generation. **Change one, change the other**: rendering the
-template with default parameters must reproduce the `src/` files byte for byte, which CI checks.
 
 Authoritative upstream documentation, in the
 [Macro Deck 3 repository](https://github.com/Macro-Deck-App/Macro-Deck-3/tree/main/docs/plugin-development):
@@ -52,40 +42,6 @@ Authoritative upstream documentation, in the
 artifact, environment variables), `capability-parity.md` (what behaves differently out of process),
 `analyzers.md`, `conformance.md`, `testing-plugins.md`, `cli.md`. When a question is about SDK behaviour
 rather than this template's own code, look there rather than guessing.
-
-## Before you start on a fresh plugin
-
-`dotnet new macrodeck-plugin` sets the identity and the publication metadata for you:
-
-```bash
-dotnet new macrodeck-plugin -n <Name> --pluginId <id> --pluginName "<Display name>" \
-  --publisher "<Publisher>" --repository <url> --platforms win-x64 --platforms osx-arm64
-```
-
-`--publisher`, `--description`, `--license`, `--repository`, `--homepage` and `--platforms` all land in
-`manifest.json` natively, and `--platforms` drives `macrodeck-build.json` with it. `--homepage` is
-omitted rather than written empty when not supplied, because the schema requires an absolute URL.
-`--repository` is always written and defaults to a placeholder the Store refuses, so pass the real
-one. `macrodeck-plugin new` collects the same values and passes them through.
-
-A repository *cloned* from this template still carries the template's identity, so fix that first, in
-one change:
-
-1. `manifest.json` - `id` (reverse-domain, lowercase, at least two dot-joined kebab segments, e.g.
-   `com.example.my-plugin`), `name`, `version`, `description`, `publisher.name`, `repository`, and
-   `entrypoints` plus the matching `macrodeck-build.json` targets for the platforms you actually ship.
-2. Rename the project, the test project, the solution file and the namespace. The project's
-   `AssemblyName` and `RootNamespace` are pinned: the first names the executable, so change it together
-   with the `entrypoints` paths - never one without the other, or `macrodeck-plugin build` fails with
-   `entrypoint-missing`; the second is where the generated `Strings` class lives.
-3. Replace `Assets/icon.svg`. The manifest's `icon` path is the single source of truth and the host
-   reads that file directly - there is no icon code to change.
-4. Replace `LogMessageAction` with the plugin's real first action, and its keys in
-   `Localization/Strings.resx` with real ones.
-
-`MacroDeck.Plugin.Analyzers` is already referenced with `PrivateAssets="all"` - 13 compile-time
-diagnostics that catch most of the mistakes below while you type, plus the `[MacroDeckSdkUsage]`
-attribute the host reads to report real deprecation usage instead of inferring it. Keep it.
 
 ## Store gate
 
@@ -112,10 +68,9 @@ A change is not done until all six hold:
    the matching versions are blocked. `reason` says why. Replace the package or restructure the code
    that needs it. Never work around a block by vendoring, renaming or loading the package some other
    way.
-3. **The Macro Deck SDK is at least `minimumSdkVersion`.** The Macro Deck packages float to the newest
-   published version by default, so this usually holds on its own. It stops holding when
-   `MacroDeckSdkVersion` is pinned, or when a build runs against `local-feed/`. A release must never be
-   built against an SDK older than the minimum.
+3. **The Macro Deck SDK is at least `minimumSdkVersion`.** `MacroDeckSdkVersion` is pinned in
+   `Directory.Packages.props`; bump it together with the CLI version in both workflows. A release must
+   never be built against an SDK older than the minimum.
 4. **Only allowed Macro Deck packages are used.** Every package in the graph whose id starts with
    `MacroDeck.` must match an entry in `allowedMacroDeckPackages`. Anything else under that prefix is
    refused on upload, including packages from another Macro Deck repository that were never published
@@ -359,7 +314,7 @@ enrollment token only through the project's local .NET User Secrets and remove i
 Do not add a second run configuration or a CLI/executable startup path.
 
 ```bash
-macrodeck-plugin test --project src/AppleMusicControl --report markdown --output conformance.md
+macrodeck-plugin test --executable "$PWD/src/AppleMusicControl/bin/Release/net10.0-windows10.0.19041.0/AppleMusicControl.dll" --report markdown --output conformance.md
 ```
 
 The conformance suite drives a real session: capability contracts, invocation and cancellation semantics,
@@ -369,15 +324,9 @@ it after any change to capability shape, cancellation handling or the manifest, 
 check going from pass to fail as a blocking regression. Most checks `SKIP` until the plugin declares
 capabilities.
 
-The Macro Deck packages float to the newest published version, so the commands above need no version
-argument. Only to test against SDK surface that is not published yet, pack it into `local-feed/` and
-pass `-p:MacroDeckSdkVersion=<version>` - see "Building against a local SDK build" in
-[README.md](README.md).
-
-Working in the template repository itself rather than in a plugin generated from it? Changing its shape
-(files, names, `.template.config/template.json`, `packaging/`) also needs a generated-project check -
-see
-[packaging/README.md](https://github.com/Macro-Deck-App/Macro-Deck-Plugin-Template/blob/main/packaging/README.md).
+`--project` cannot pick a framework of this multi-targeted project, so the Windows build is passed with
+`--executable` (absolute path). Windows behaviour itself (Apple Music, volume) can only be verified on a
+Windows PC with Apple Music installed.
 
 ## Packing a plugin release
 
@@ -410,9 +359,8 @@ match.
 
 - Work on a branch, not directly on `main`. Use `feature/`, `fix/`, `refactor/`, `chore/`, `docs/` or
   `ci/` with a short kebab-case description, and an issue number where one exists.
-- Publishing the template package requires a pushed semantic-version tag such as
-  `v3.0.0-preview.3`. The publish workflow removes the leading `v` and uses the rest as the NuGet
-  package version. A push to `main` alone never publishes.
+- Publishing is a GitHub release through `.github/workflows/release.yaml` (the official Macro Deck
+  workflow); the tag is the version. Never create a release without the owner's approval.
 - Keep changes focused; no unrelated reformatting.
 - Do not push or open a pull request unless asked.
 - Do not add AI attribution or co-author trailers.
